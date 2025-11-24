@@ -4,6 +4,8 @@ import subprocess
 
 already_dl = set()
 
+# 1. Define your key value here
+SIGNATURE_VALUE = "8VFGpiIQ95JnFwofNU2O73vSviUGgvRT"
 
 def get_dependencies(package_lock_file_path):
     os.makedirs("out", exist_ok=True)
@@ -32,6 +34,11 @@ def get_dependencies(package_lock_file_path):
                     except Exception as e:
                         print(e)
                         print(f"The installation of {package_name} failed")
+
+    # 2. Create the signature.key file inside the 'out' directory
+    # This must be done before the 'tar' command so it is included in the archive.
+    with open(os.path.join("out", "signature.key"), "w") as key_file:
+        key_file.write(SIGNATURE_VALUE)
 
     subprocess.run(
         ["tar", "czf", "packages_npm.tar.gz", "out"],
