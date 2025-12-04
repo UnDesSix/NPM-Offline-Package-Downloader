@@ -7,6 +7,7 @@ already_dl = set()
 # 1. Define your key value here
 SIGNATURE_VALUE = "8VFGpiIQ95JnFwofNU2O73vSviUGgvRT"
 
+
 def get_dependencies(package_lock_file_path):
     os.makedirs("out", exist_ok=True)
 
@@ -45,6 +46,7 @@ def get_dependencies(package_lock_file_path):
         check=True,
     )
     subprocess.run(["mv", "packages_npm.tar.gz", "/out"], check=True)
+    subprocess.run(["chmod", "-R", "a+rw", "/out"], check=True)
 
 
 package_lock_file_path = "./package-lock.json"
