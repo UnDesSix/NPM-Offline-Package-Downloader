@@ -1,38 +1,63 @@
 # NPM Offline Package Downloader
 
 Outil simple pour télécharger des paquets NPM et leurs dépendances pour un usage offline.
-Génère une archive `.tar.gz` prête à être importée dans un environnement offline.
+Génère une archive `.tar.gz` prête à être importée dans un environnement sans internet.
+
+## Pré-requis
+
+*   **Docker** (et Docker Compose) installé et lancé.
+*   **Make** (uniquement pour Linux/macOS).
+*   Avoir le fichier `package.json` à la racine du projet.
+
+## Installation et Préparation
+
+**Récupérez le projet et placez-vous dans le dossier :**
+
+    ```bash
+    git clone https://github.com/UnDesSix/NPM-Offline-Package-Downloader
+    cd NPM-Offline-Package-Downloader
+    ```
+
+
+
+---
 
 ## Utilisation
 
-1. Préparer le `package.json` et générer le `package-lock.json` :
+### 🐧 Linux / macOS
+
+La commande `make` par défaut se charge de construire l'image et de lancer le téléchargement :
 
 ```bash
-npm install --package-lock-only --legacy-peer-deps
+make
 ```
 
-2. Construire l’image Docker :
+> **Nettoyage (optionnel) :**
+> *   `make clean` : Supprime le dossier de sortie.
+> *   `make purge` : Supprime le dossier et l'image Docker.
 
-```bash
-make build
-```
+### 🪟 Windows
 
-3. Exécuter le container :
+Utilisez **Docker Compose** (via PowerShell ou CMD) :
 
-```bash
-make run
-```
+1.  **Construire l’image :**
+    ```bash
+    docker compose build
+    ```
 
-> Résultat : `npm_packages_downloaded/npm_packages_downloaded.tar` contenant tous les paquets NPM téléchargés.
+2.  **Lancer le téléchargement :**
+    ```bash
+    docker compose up
+    ```
 
-4. Nettoyer (optionnel) :
+---
 
-```bash
-make clean    # supprime le dossier de sortie
-make purge    # supprime le dossier + l'image Docker
-```
+## Résultat
 
+Une fois le processus terminé, vous trouverez l'archive contenant tous les paquets dans le dossier :
+
+📂 `out/packages_npm.tar.gz`
 
 ## Crédits
 
-Fork du projet https://github.com/AnthonyVdsa/NPM-Offline-Package-Downloader
+Fork du projet [AnthonyVdsa/NPM-Offline-Package-Downloader](https://github.com/AnthonyVdsa/NPM-Offline-Package-Downloader).
