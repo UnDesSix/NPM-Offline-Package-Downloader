@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  npm-downloader:
+    build: .
+    image: npm-offline-downloader
+    volumes:
+      - ./out:/out

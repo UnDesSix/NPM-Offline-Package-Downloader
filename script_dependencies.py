@@ -7,6 +7,9 @@ already_dl = set()
 SIGNATURE_VALUE = "8VFGpiIQ95JnFwofNU2O73vSviUGgvRT"
 
 def get_dependencies(package_lock_file_path):
+    if not os.path.exists(package_lock_file_path):
+        raise FileNotFoundError(f"Package lock file not found: {package_lock_file_path}")
+    
     os.makedirs("out", exist_ok=True)
 
     with open(package_lock_file_path, "r") as file:
@@ -24,26 +27,27 @@ def get_dependencies(package_lock_file_path):
                 if not resolved or "registry.npmjs.org" not in resolved:
                     print(f"Skipping local-only package: {package_name}")
                     continue
-                if package_name != "" and package_name not in already_dl:
-                    try:
-                        version = package_infos.get("version")
-                        pkg_name = (
-                            package_name.split("node_modules/")[-1] + "@" + version
-                        )
-                        subprocess.run(
-                            [
-                                "npm",
-                                "pack",
-                                pkg_name,
-                                "--pack-destination",
-                                "out",
-                            ],
-                            check=True,
-                        )
-                        already_dl.add(package_name)
-                    except Exception as e:
-                        print(e)
-                        print(f"The installation of {package_name} failed")
+                
+                try:
+                    version = package_infos.get("version")
+                    pkg_name = (
+                        package_name.split("node_modules/")[-1] + "@" + version
+                    )
+                    subprocess.run(
+                        [
+                            "npm",
+                            "pack",
+                            pkg_name,
+                            "--pack-destination",
+                            "out",
+                        ],
+                        check=True,
+                    )
+                    already_dl.add(package_name)
+                except subprocess.CalledProcessError as e:
+                    print(f"Failed to download {package_name}: {e}")
+                except Exception as e:
+                    print(f"Unexpected error downloading {package_name}: {e}")
 
     # 2. Create the signature.key file inside the 'out' directory
     # This must be done before the 'tar' command so it is included in the archive.

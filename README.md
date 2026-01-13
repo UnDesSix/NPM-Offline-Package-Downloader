@@ -13,10 +13,10 @@ Génère une archive `.tar.gz` prête à être importée dans un environnement s
 
 **Récupérez le projet et placez-vous dans le dossier :**
 
-    ```bash
-    git clone https://github.com/UnDesSix/NPM-Offline-Package-Downloader
-    cd NPM-Offline-Package-Downloader
-    ```
+```bash
+git clone https://github.com/UnDesSix/NPM-Offline-Package-Downloader
+cd NPM-Offline-Package-Downloader
+```
 
 
 

@@ -1,10 +1,11 @@
-FROM node:20.12.2
+FROM node:20-slim
 
 WORKDIR /home/node/app
 
 COPY ./script_dependencies.py /home/node/app/script_dependencies.py
 COPY ./package.json /home/node/app/package.json
 
-RUN npm install --package-lock-only --legacy-peer-deps
+RUN npm install --package-lock-only --legacy-peer-deps && \
+    npm cache clean --force
 
 CMD ["python3", "script_dependencies.py"]

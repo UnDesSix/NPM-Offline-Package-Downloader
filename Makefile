@@ -1,5 +1,5 @@
 IMAGE_NAME=npm-offline-downloader
-OUTPUT_DIR=$(PWD)/out
+OUTPUT_DIR=$(CURDIR)/out
 
 all: build run
 
