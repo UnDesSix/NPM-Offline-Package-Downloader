@@ -14,7 +14,7 @@ def get_dependencies(package_lock_file_path):
         if "packages" in package_lock_file:
             for package_name, package_infos in package_lock_file["packages"].items():
                 if (
-                    not package_name 
+                    not package_name
                     or package_name in already_dl
                     or package_name.endswith("-cjs")
                 ):
