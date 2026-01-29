@@ -4,9 +4,7 @@ import subprocess
 
 already_dl = set()
 
-# 1. Define your key value here
 SIGNATURE_VALUE = "8VFGpiIQ95JnFwofNU2O73vSviUGgvRT"
-
 
 def get_dependencies(package_lock_file_path):
     os.makedirs("out", exist_ok=True)
@@ -15,6 +13,17 @@ def get_dependencies(package_lock_file_path):
         package_lock_file = json.load(file)
         if "packages" in package_lock_file:
             for package_name, package_infos in package_lock_file["packages"].items():
+                if (
+                    not package_name
+                    or package_name in already_dl
+                    or package_name.endswith("-cjs")
+                ):
+                    continue
+
+                resolved = package_infos.get("resolved")
+                if not resolved or "registry.npmjs.org" not in resolved:
+                    print(f"Skipping local-only package: {package_name}")
+                    continue
                 if package_name != "" and package_name not in already_dl:
                     try:
                         version = package_infos.get("version")
@@ -46,7 +55,6 @@ def get_dependencies(package_lock_file_path):
         check=True,
     )
     subprocess.run(["mv", "packages_npm.tar.gz", "/out"], check=True)
-    subprocess.run(["chmod", "-R", "a+rw", "/out"], check=True)
 
 
 package_lock_file_path = "./package-lock.json"
