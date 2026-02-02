@@ -4,9 +4,9 @@ import subprocess
 import tarfile
 import shutil
 import tempfile
+from tqdm import tqdm
 
 already_dl = set()
-
 SIGNATURE_VALUE = "8VFGpiIQ95JnFwofNU2O73vSviUGgvRT"
 
 def sanitize_package(tgz_path):
@@ -19,7 +19,6 @@ def sanitize_package(tgz_path):
                 tar.extractall(temp_dir)
             
             pkg_json_path = os.path.join(temp_dir, "package", "package.json")
-            
             if not os.path.exists(pkg_json_path):
                 return
 
@@ -38,78 +37,68 @@ def sanitize_package(tgz_path):
                 with tarfile.open(tgz_path, "w:gz") as tar:
                     tar.add(os.path.join(temp_dir, "package"), arcname="package")
                 
-                print(f"{tgz_path}")
+                print(f"[SANITIZED] {tgz_path}")
 
     except Exception as e:
-        print(f"Erreur lors du nettoyage de {tgz_path}: {e}")
+        print(f"[ERROR] Erreur lors du nettoyage de {tgz_path}: {e}")
+
 
 def get_dependencies(package_lock_file_path):
     out_dir = "out"
     os.makedirs(out_dir, exist_ok=True)
 
-    with open(package_lock_file_path, "r") as file:
+    with open(package_lock_file_path, "r", encoding="utf-8") as file:
         package_lock_file = json.load(file)
-        if "packages" in package_lock_file:
-            for package_name, package_infos in package_lock_file["packages"].items():
-                if (
-                    not package_name
-                    or package_name in already_dl
-                    or package_name.endswith("-cjs")
-                ):
-                    continue
 
-                resolved = package_infos.get("resolved")
-                if not resolved or "registry.npmjs.org" not in resolved:
-                    print(f"Skipping local-only package: {package_name}")
-                    continue
+    packages = [
+        (name, info)
+        for name, info in package_lock_file.get("packages", {}).items()
+        if name and name not in already_dl and not name.endswith("-cjs")
+    ]
 
-                if package_name != "" and package_name not in already_dl:
-                    try:
-                        version = package_infos.get("version")
-                        pkg_identifier = (
-                            package_name.split("node_modules/")[-1] + "@" + version
-                        )
-                        
-                        result = subprocess.run(
-                            [
-                                "npm",
-                                "pack",
-                                pkg_identifier,
-                                "--pack-destination",
-                                out_dir,
-                            ],
-                            check=True,
-                            capture_output=True,
-                            text=True
-                        )
-                        
-                        filename = result.stdout.strip()
-                        full_tgz_path = os.path.join(out_dir, filename)
+    for package_name, package_infos in tqdm(packages, desc="Téléchargement packages", unit="pkg"):
+        resolved = package_infos.get("resolved")
+        if not resolved or "registry.npmjs.org" not in resolved:
+            print(f"[SKIP] Local-only package: {package_name}")
+            continue
 
-                        if os.path.exists(full_tgz_path):
-                            sanitize_package(full_tgz_path)
+        version = package_infos.get("version")
+        pkg_identifier = package_name.split("node_modules/")[-1] + "@" + version
+        print(f"[INFO] Traitement de {pkg_identifier}")
 
-                        already_dl.add(package_name)
-                    except subprocess.CalledProcessError as e:
-                        print(f"Erreur npm pack pour {package_name}: {e.stderr}")
-                    except Exception as e:
-                        print(e)
-                        print(f"The installation of {package_name} failed")
+        try:
+            result = subprocess.run(
+                ["npm", "pack", pkg_identifier, "--pack-destination", out_dir],
+                check=True,
+                text=True
+            )
+            filename = f"{pkg_identifier.replace('/', '-')}-{version}.tgz"
+            full_tgz_path = os.path.join(out_dir, filename)
 
-    # 2. Create the signature.key file inside the 'out' directory
+            if os.path.exists(full_tgz_path):
+                sanitize_package(full_tgz_path)
+
+            already_dl.add(package_name)
+            print(f"[SUCCESS] {pkg_identifier} téléchargé et nettoyé")
+
+        except subprocess.CalledProcessError as e:
+            print(f"[ERROR] npm pack pour {pkg_identifier} échoué: {e}")
+        except Exception as e:
+            print(f"[ERROR] Erreur inattendue pour {pkg_identifier}: {e}")
+
     with open(os.path.join(out_dir, "signature.key"), "w") as key_file:
         key_file.write(SIGNATURE_VALUE)
 
-    print("Création de l'archive finale...")
-    subprocess.run(
-        ["tar", "czf", "packages_npm.tar.gz", out_dir],
-        check=True,
-    )
-    
+    print("[INFO] Création de l'archive finale packages_npm.tar.gz...")
+    subprocess.run(["tar", "czf", "packages_npm.tar.gz", out_dir], check=True)
+
     try:
         shutil.move("packages_npm.tar.gz", "/out/packages_npm.tar.gz")
+        print("[SUCCESS] Archive déplacée vers /out/packages_npm.tar.gz")
     except Exception as e:
-         print(f"Impossible de déplacer vers /out (peut-être en local?): {e}")
+        print(f"[WARN] Impossible de déplacer vers /out (peut-être en local?): {e}")
 
-package_lock_file_path = "./package-lock.json"
-get_dependencies(package_lock_file_path)
+
+if __name__ == "__main__":
+    package_lock_file_path = "./package-lock.json"
+    get_dependencies(package_lock_file_path)
