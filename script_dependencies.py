@@ -18,25 +18,22 @@ def sanitize_package(tgz_path):
             with tarfile.open(tgz_path, "r:gz") as tar:
                 tar.extractall(temp_dir)
             
+            # Dans un tgz npm, le contenu est toujours dans un dossier "package"
             pkg_json_path = os.path.join(temp_dir, "package", "package.json")
             if not os.path.exists(pkg_json_path):
                 return
 
-            modified = False
             with open(pkg_json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             
             if "publishConfig" in data:
                 del data["publishConfig"]
-                modified = True
-
-            if modified:
                 with open(pkg_json_path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2)
                 
+                # On ré-écrase l'archive d'origine avec le dossier modifié
                 with tarfile.open(tgz_path, "w:gz") as tar:
                     tar.add(os.path.join(temp_dir, "package"), arcname="package")
-                
                 print(f"[SANITIZED] {tgz_path}")
 
     except Exception as e:
@@ -59,27 +56,28 @@ def get_dependencies(package_lock_file_path):
     for package_name, package_infos in tqdm(packages, desc="Téléchargement packages", unit="pkg"):
         resolved = package_infos.get("resolved")
         if not resolved or "registry.npmjs.org" not in resolved:
-            print(f"[SKIP] Local-only package: {package_name}")
             continue
 
         version = package_infos.get("version")
-        pkg_identifier = package_name.split("node_modules/")[-1] + "@" + version
-        print(f"[INFO] Traitement de {pkg_identifier}")
+        pkg_real_name = package_name.split("node_modules/")[-1]
+        pkg_identifier = f"{pkg_real_name}@{version}"
 
         try:
             result = subprocess.run(
                 ["npm", "pack", pkg_identifier, "--pack-destination", out_dir],
                 check=True,
+                capture_output=True,
                 text=True
             )
-            filename = f"{pkg_identifier.replace('/', '-')}-{version}.tgz"
+            filename = result.stdout.strip().splitlines()[-1]
             full_tgz_path = os.path.join(out_dir, filename)
 
             if os.path.exists(full_tgz_path):
                 sanitize_package(full_tgz_path)
+            else:
+                print(f"[ERROR] Fichier non trouvé: {full_tgz_path}")
 
             already_dl.add(package_name)
-            print(f"[SUCCESS] {pkg_identifier} téléchargé et nettoyé")
 
         except subprocess.CalledProcessError as e:
             print(f"[ERROR] npm pack pour {pkg_identifier} échoué: {e}")
@@ -94,9 +92,8 @@ def get_dependencies(package_lock_file_path):
 
     try:
         shutil.move("packages_npm.tar.gz", "/out/packages_npm.tar.gz")
-        print("[SUCCESS] Archive déplacée vers /out/packages_npm.tar.gz")
-    except Exception as e:
-        print(f"[WARN] Impossible de déplacer vers /out (peut-être en local?): {e}")
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
